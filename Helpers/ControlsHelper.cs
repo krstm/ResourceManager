@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace ResourceManager.Helpers
 {
@@ -35,6 +34,7 @@ namespace ResourceManager.Helpers
                 }
             }
         }
+
         public static async void UpdateButton(Button button, bool isUpdate)
         {
             if (button.Tag == null)
@@ -61,7 +61,5 @@ namespace ResourceManager.Helpers
                 button.Tag = null;
             }
         }
-
-
     }
 }

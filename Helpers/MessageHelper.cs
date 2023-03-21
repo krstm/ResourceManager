@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System.Collections.Generic;
+using System.Text;
+using System.Windows;
 
 namespace ResourceManager.Helpers
 {
@@ -25,5 +27,25 @@ namespace ResourceManager.Helpers
             MessageBox.Show(message, "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
+        public static string GetDistinctDifferentNameDuplicateKeysMessage(Dictionary<string, List<string>> distinctDifferentNameDuplicateKeys)
+        {
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.AppendLine("Aşağıdaki key'lerin farklı değerleri vardır:");
+            messageBuilder.AppendLine();
+
+            foreach (KeyValuePair<string, List<string>> kvp in distinctDifferentNameDuplicateKeys)
+            {
+                messageBuilder.AppendLine($"Key: {kvp.Key}");
+
+                foreach (string value in kvp.Value)
+                {
+                    messageBuilder.AppendLine($" - Value: {value}");
+                }
+
+                messageBuilder.AppendLine();
+            }
+
+            return messageBuilder.ToString();
+        }
     }
 }

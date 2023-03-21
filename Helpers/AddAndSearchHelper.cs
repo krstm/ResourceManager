@@ -2,14 +2,57 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Controls;
+using System.Xml;
 
 namespace ResourceManager.Helpers
 {
     public static class AddAndSearchHelper
     {
+        public static bool AddResource(string filePath, string key, string value)
+        {
+            XmlDocument resxDoc = new XmlDocument();
+            resxDoc.Load(filePath);
+
+            bool resourceExists = false;
+            foreach (XmlNode node in resxDoc.SelectNodes("root/data"))
+            {
+                if (node.Attributes["name"].Value == key)
+                {
+                    node.SelectSingleNode("value").InnerText = value;
+                    resourceExists = true;
+                    break;
+                }
+            }
+
+            if (!resourceExists)
+            {
+                XmlNode newNode = resxDoc.CreateNode(XmlNodeType.Element, "data", null);
+                XmlAttribute nameAttribute = resxDoc.CreateAttribute("name");
+                nameAttribute.Value = key;
+                newNode.Attributes.Append(nameAttribute);
+                XmlAttribute spaceAttribute = resxDoc.CreateAttribute("xml", "space", "http://www.w3.org/XML/1998/namespace");
+                spaceAttribute.Value = "preserve";
+                newNode.Attributes.Append(spaceAttribute);
+                XmlNode valueNode = resxDoc.CreateNode(XmlNodeType.Element, "value", null);
+                valueNode.InnerText = value;
+                newNode.AppendChild(valueNode);
+                resxDoc.SelectSingleNode("root").AppendChild(newNode);
+            }
+
+            using (StreamWriter streamWriter = new StreamWriter(filePath, false, ResxHelper.GetEncoding(filePath)))
+            {
+                resxDoc.Save(streamWriter);
+                streamWriter.Flush();
+                streamWriter.Close();
+            }
+
+            return resourceExists;
+        }
+
         public static void LoadResxFilesToDataGrid(DataGrid dataGrid, List<ResxFile> files)
         {
             var keys = files.SelectMany(x => x.KeysAndWordings.Keys).ToHashSet();
@@ -39,6 +82,7 @@ namespace ResourceManager.Helpers
 
             dataGrid.ItemsSource = table.DefaultView;
         }
+
         public static void SearchByKey(DataGrid dataGrid, string searchText)
         {
             var view = (DataView)dataGrid.Tag ?? (DataView)dataGrid.ItemsSource;

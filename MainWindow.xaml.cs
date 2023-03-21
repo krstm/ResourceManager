@@ -1,4 +1,5 @@
-﻿using ResourceManager.Entities;
+﻿using Microsoft.Win32;
+using ResourceManager.Entities;
 using ResourceManager.Helpers;
 using System.Collections.Generic;
 using System.Data;
@@ -6,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Xml;
 
 namespace ResourceManager
 {
@@ -59,10 +59,27 @@ namespace ResourceManager
                 }
             }
         }
+
         public bool ImportFile(string filePath)
         {
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath) || Path.GetExtension(filePath) != ".resx")
+            if (string.IsNullOrEmpty(filePath))
             {
+                var errorMessage = "Dosya yolu boş.";
+                MessageHelper.ShowErrorMessage(errorMessage);
+                return false;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                var errorMessage = "Böyle bir dosya yok.";
+                MessageHelper.ShowErrorMessage(errorMessage);
+                return false;
+            }
+
+            if (Path.GetExtension(filePath) != ".resx")
+            {
+                var errorMessage = "Dosya uzantısı geçerli değil.";
+                MessageHelper.ShowErrorMessage(errorMessage);
                 return false;
             }
 
@@ -70,24 +87,46 @@ namespace ResourceManager
 
             if (filePaths.Contains(filePath))
             {
+                var errorMessage = "Bu dosya zaten eklenmiş.";
+                MessageHelper.ShowErrorMessage(errorMessage);
                 return false;
             }
 
             string fileNameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
-            int count = 2;
+            if (fileNameWithoutExt == "Key")
+            {
+                MessageHelper.ShowErrorMessage("İsmi \"Key.resx\" olan bir dosya eklenemez.");
+                return false;
+            }
 
+            int count = 2;
             string fileName = AddAndSearchHelper.RemovePunctuation(fileNameWithoutExt);
             var fileNames = resxFiles.Select(x => x.FileName).ToHashSet();
             while (fileNames.Contains(fileName))
             {
                 fileName = fileNameWithoutExt + "_" + count.ToString();
                 count++;
+                if (fileNames.Contains(fileName))
+                {
+                    fileName = fileName.Substring(0, fileName.LastIndexOf('_') + 1) + count.ToString();
+                    count++;
+                }
             }
 
             try
             {
+                var differentNameDuplicateKeys = ResxHelper.FindDistinctDifferentNameDuplicateKeys(filePath);
+
+                if (differentNameDuplicateKeys.Count > 0)
+                {
+                    var message = MessageHelper.GetDistinctDifferentNameDuplicateKeysMessage(differentNameDuplicateKeys);
+                    MessageHelper.ShowErrorMessage(message);
+                    return false;
+                }
+
                 if (ResxHelper.HasDuplicateKeys(filePath))
                 {
+                    MessageHelper.ShowInformationMessage("Dosyada çoklanmış veriler bulundu. Bu veriler temizlenecek.");
                     ResxHelper.RemoveDuplicateResources(filePath);
                 }
 
@@ -102,9 +141,9 @@ namespace ResourceManager
 
                 return true;
             }
-            catch (System.Exception)
+            catch (System.Exception exception)
             {
-
+                MessageHelper.ShowErrorMessage(exception.Message);
                 return false;
             }
         }
@@ -134,7 +173,7 @@ namespace ResourceManager
         {
             if (istbxSearchKeyTextChangedEventEnabled)
             {
-                istbxSearchWordingTextChangedEventEnabled= false;
+                istbxSearchWordingTextChangedEventEnabled = false;
                 tbxSearchWording.Text = string.Empty;
                 istbxSearchWordingTextChangedEventEnabled = true;
                 AddAndSearchHelper.SearchByKey(dtgResxDatas, tbxSearchKey.Text);
@@ -171,7 +210,6 @@ namespace ResourceManager
             return null;
         }
 
-
         private void btnKeyWordingAddOrUpdate_Click(object sender, RoutedEventArgs e)
         {
             var selectedFile = GetSelectedRadioButtonContent();
@@ -184,7 +222,7 @@ namespace ResourceManager
             {
                 return;
             }
-            var isUpdate = ResxHelper.AddResource(filePath, tbxAddKey.Text, tbxAddWording.Text);
+            var isUpdate = AddAndSearchHelper.AddResource(filePath, tbxAddKey.Text, tbxAddWording.Text);
             ControlsHelper.UpdateButton(btnKeyWordingAddOrUpdate, isUpdate);
         }
 
@@ -219,6 +257,15 @@ namespace ResourceManager
                         }
                     }
                 }
+            }
+        }
+
+        private void btnBrowse_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            if (openFileDialog.ShowDialog() == true)
+            {
+                tbxFilePath.Text = openFileDialog.FileName;
             }
         }
     }

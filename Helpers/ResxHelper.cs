@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
@@ -9,7 +10,7 @@ namespace ResourceManager.Helpers
 {
     public static class ResxHelper
     {
-        private static Encoding GetEncoding(string filePath)
+        public static Encoding GetEncoding(string filePath)
         {
             using (var reader = new StreamReader(filePath, Encoding.Default, true))
             {
@@ -39,47 +40,6 @@ namespace ResourceManager.Helpers
             return resources;
         }
 
-        public static bool AddResource(string filePath, string key, string value)
-        {
-            XmlDocument resxDoc = new XmlDocument();
-            resxDoc.Load(filePath);
-
-            bool resourceExists = false;
-            foreach (XmlNode node in resxDoc.SelectNodes("root/data"))
-            {
-                if (node.Attributes["name"].Value == key)
-                {
-                    node.SelectSingleNode("value").InnerText = value;
-                    resourceExists = true;
-                    break;
-                }
-            }
-
-            if (!resourceExists)
-            {
-                XmlNode newNode = resxDoc.CreateNode(XmlNodeType.Element, "data", null);
-                XmlAttribute nameAttribute = resxDoc.CreateAttribute("name");
-                nameAttribute.Value = key;
-                newNode.Attributes.Append(nameAttribute);
-                XmlAttribute spaceAttribute = resxDoc.CreateAttribute("xml", "space", "http://www.w3.org/XML/1998/namespace");
-                spaceAttribute.Value = "preserve";
-                newNode.Attributes.Append(spaceAttribute);
-                XmlNode valueNode = resxDoc.CreateNode(XmlNodeType.Element, "value", null);
-                valueNode.InnerText = value;
-                newNode.AppendChild(valueNode);
-                resxDoc.SelectSingleNode("root").AppendChild(newNode);
-            }
-
-            using (StreamWriter streamWriter = new StreamWriter(filePath, false, GetEncoding(filePath)))
-            {
-                resxDoc.Save(streamWriter);
-                streamWriter.Flush();
-                streamWriter.Close();
-            }
-
-            return resourceExists;
-        }
-
         public static void RemoveDuplicateResources(string filePath)
         {
             Hashtable resourceTable = new Hashtable();
@@ -105,6 +65,7 @@ namespace ResourceManager.Helpers
                 streamWriter.Close();
             }
         }
+
         public static bool HasDuplicateKeys(string filePath)
         {
             XmlDocument resxDoc = new XmlDocument();
@@ -123,6 +84,38 @@ namespace ResourceManager.Helpers
             }
 
             return false;
+        }
+
+        public static Dictionary<string, List<string>> FindDistinctDifferentNameDuplicateKeys(string filePath)
+        {
+            XmlDocument resxDoc = new XmlDocument();
+            resxDoc.Load(filePath);
+
+            var distinctDuplicateKeys = new Dictionary<string, List<string>>();
+
+            foreach (XmlNode node in resxDoc.SelectNodes("root/data"))
+            {
+                string key = node.Attributes["name"].Value;
+                string value = node.InnerText;
+
+                if (!distinctDuplicateKeys.ContainsKey(key))
+                {
+                    distinctDuplicateKeys.Add(key, new List<string> { value });
+                }
+                else
+                {
+                    if (!distinctDuplicateKeys[key].Contains(value))
+                    {
+                        distinctDuplicateKeys[key].Add(value);
+                    }
+                }
+            }
+
+            var differentNameDuplicateKeys = distinctDuplicateKeys.Where(kvp => kvp.Value.Count > 1)
+                                                                   .ToDictionary(kvp => kvp.Key,
+                                                                                 kvp => kvp.Value.Distinct().ToList());
+
+            return differentNameDuplicateKeys;
         }
     }
 }
