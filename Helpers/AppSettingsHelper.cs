@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
-using System.Windows.Controls;
 
 namespace ResourceManager.Helpers
 {
@@ -50,19 +49,6 @@ namespace ResourceManager.Helpers
             };
             string json = JsonSerializer.Serialize(settings);
             File.WriteAllText(_settingsFilePath, json);
-        }
-
-        public static void SetEqualColumnWidths(DataGrid dataGrid)
-        {
-            if (dataGrid != null)
-            {
-                double columnWidth = dataGrid.ActualWidth / dataGrid.Columns.Count;
-
-                foreach (var column in dataGrid.Columns)
-                {
-                    column.Width = new DataGridLength(columnWidth, DataGridLengthUnitType.Pixel);
-                }
-            }
         }
 
         public static void SaveStringListToJsonFile(List<string> stringList)

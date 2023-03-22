@@ -1,6 +1,7 @@
 ﻿using Microsoft.Win32;
 using ResourceManager.Entities;
 using ResourceManager.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -124,9 +125,15 @@ namespace ResourceManager
                     return false;
                 }
 
-                if (ResxHelper.HasDuplicateKeys(filePath))
+                var duplicateKeys = ResxHelper.GetDuplicateKeys(filePath);
+                if (duplicateKeys.Count > 0)
                 {
-                    MessageHelper.ShowInformationMessage("Dosyada çoklanmış veriler bulundu. Bu veriler temizlenecek.");
+                    MessageHelper.ShowInformationMessage("Dosyada çoklanmış veriler bulundu. Bu veriler temizlenecek." + 
+                        Environment.NewLine + 
+                        Environment.NewLine + 
+                        "Çoklanmış Keyler:" +
+                        Environment.NewLine +
+                        string.Join(", ", duplicateKeys));
                     ResxHelper.RemoveDuplicateResources(filePath);
                 }
 
@@ -135,9 +142,9 @@ namespace ResourceManager
                 resxFiles.Add(new ResxFile() { FileName = fileName, FilePath = filePath, KeysAndWordings = keysAndWordings });
                 AddRadioButtonToStackPanel(fileName);
 
-                AddAndSearchHelper.LoadResxFilesToDataGrid(dtgResxDatas, resxFiles);
+                ResxHelper.LoadResxFilesToDataGrid(dtgResxDatas, resxFiles);
 
-                AppSettingsHelper.SetEqualColumnWidths(dtgResxDatas);
+                ControlsHelper.SetEqualColumnWidths(dtgResxDatas);
 
                 return true;
             }
@@ -150,34 +157,36 @@ namespace ResourceManager
 
         private void btnAddResx_Click(object sender, RoutedEventArgs e)
         {
+            ControlsHelper.DisableControls(this, false);
             var isImported = ImportFile(tbxFilePath.Text);
             if (isImported)
             {
                 ControlsHelper.UpdateButton((Button)sender, false);
             }
+            ControlsHelper.DisableControls(this, true);
         }
 
         private void tbxSearchWording_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (istbxSearchWordingTextChangedEventEnabled)
+            if (dtgResxDatas.Items.Count > 0 && istbxSearchWordingTextChangedEventEnabled)
             {
                 istbxSearchKeyTextChangedEventEnabled = false;
                 tbxSearchKey.Text = string.Empty;
                 istbxSearchKeyTextChangedEventEnabled = true;
                 AddAndSearchHelper.SearchByValue(dtgResxDatas, tbxSearchWording.Text);
-                AppSettingsHelper.SetEqualColumnWidths(dtgResxDatas);
+                ControlsHelper.SetEqualColumnWidths(dtgResxDatas);
             }
         }
 
         private void tbxSearchKey_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (istbxSearchKeyTextChangedEventEnabled)
+            if (dtgResxDatas.Items.Count > 0 && istbxSearchKeyTextChangedEventEnabled)
             {
                 istbxSearchWordingTextChangedEventEnabled = false;
                 tbxSearchWording.Text = string.Empty;
                 istbxSearchWordingTextChangedEventEnabled = true;
                 AddAndSearchHelper.SearchByKey(dtgResxDatas, tbxSearchKey.Text);
-                AppSettingsHelper.SetEqualColumnWidths(dtgResxDatas);
+                ControlsHelper.SetEqualColumnWidths(dtgResxDatas);
             }
         }
 
@@ -212,23 +221,59 @@ namespace ResourceManager
 
         private void btnKeyWordingAddOrUpdate_Click(object sender, RoutedEventArgs e)
         {
+            ControlsHelper.DisableControls(this, false);
+            if (string.IsNullOrEmpty(tbxAddKey.Text))
+            {
+                MessageHelper.ShowErrorMessage("Key eklenmeli.");
+                ControlsHelper.DisableControls(this, true);
+                return;
+            }
+            if (string.IsNullOrEmpty(tbxAddWording.Text))
+            {
+                MessageHelper.ShowErrorMessage("Wording eklenmeli.");
+                ControlsHelper.DisableControls(this, true);
+                return;
+            }
+
             var selectedFile = GetSelectedRadioButtonContent();
             if (selectedFile == null)
             {
+                MessageHelper.ShowErrorMessage("Dosya seçilmedi.");
+                ControlsHelper.DisableControls(this, true);
                 return;
             }
             var filePath = resxFiles.Where(x => x.FileName == selectedFile).Select(x => x.FilePath).FirstOrDefault();
             if (filePath == null)
             {
+                MessageHelper.ShowErrorMessage("Dosya yolu bulunamadı.");
+                ControlsHelper.DisableControls(this, true);
                 return;
             }
-            var isUpdate = AddAndSearchHelper.AddResource(filePath, tbxAddKey.Text, tbxAddWording.Text);
-            ControlsHelper.UpdateButton(btnKeyWordingAddOrUpdate, isUpdate);
+
+            var nonAlphabeticChars = string.Empty;
+            var keyNameIsOkey = true;
+            nonAlphabeticChars = AddAndSearchHelper.GetNonAlphanumericChars(tbxAddKey.Text);
+            if (!string.IsNullOrEmpty(nonAlphabeticChars))
+            {
+                keyNameIsOkey = MessageHelper.ShowYesNoMessage("Key için uygun olmayan karakterler var. Yine de devam edilsin mi?" +
+                    Environment.NewLine +
+                    Environment.NewLine +
+                    "Uygun olmayan karakterler: " +
+                    Environment.NewLine + nonAlphabeticChars);
+            }
+            if (keyNameIsOkey)
+            {
+                var isUpdate = AddAndSearchHelper.AddResource(filePath, tbxAddKey.Text, tbxAddWording.Text);
+                AddAndSearchHelper.UpdateDataGridCell(dtgResxDatas, selectedFile, tbxAddKey.Text, tbxAddWording.Text);
+                ControlsHelper.SetEqualColumnWidths(dtgResxDatas);
+                ControlsHelper.UpdateButton(btnKeyWordingAddOrUpdate, isUpdate);
+            }
+            ControlsHelper.DisableControls(this, true);
         }
 
         private void dtgResxDatas_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            AppSettingsHelper.SetEqualColumnWidths(dtgResxDatas);
+            ControlsHelper.SetEqualColumnWidths(dtgResxDatas);
         }
 
         private void dtgResxDatas_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)

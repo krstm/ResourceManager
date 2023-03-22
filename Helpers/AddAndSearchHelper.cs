@@ -1,5 +1,4 @@
-﻿using ResourceManager.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -53,49 +52,15 @@ namespace ResourceManager.Helpers
             return resourceExists;
         }
 
-        public static void LoadResxFilesToDataGrid(DataGrid dataGrid, List<ResxFile> files)
-        {
-            var keys = files.SelectMany(x => x.KeysAndWordings.Keys).ToHashSet();
-            var table = new DataTable();
-
-            table.Columns.Add("Key", typeof(string));
-
-            foreach (var file in files)
-            {
-                table.Columns.Add(file.FileName, typeof(string));
-            }
-
-            foreach (var key in keys)
-            {
-                var row = table.NewRow();
-                row["Key"] = key;
-
-                foreach (var file in files)
-                {
-                    if (file.KeysAndWordings.TryGetValue(key, out var value))
-                    {
-                        row[file.FileName] = value;
-                    }
-                }
-                table.Rows.Add(row);
-            }
-
-            dataGrid.ItemsSource = table.DefaultView;
-        }
-
         public static void SearchByKey(DataGrid dataGrid, string searchText)
         {
             var view = (DataView)dataGrid.Tag ?? (DataView)dataGrid.ItemsSource;
             var table = view.ToTable();
 
-            if (table.Columns.Count < 1)
-            {
-                throw new ArgumentException("DataGrid must have at least one column.");
-            }
-
             if (string.IsNullOrWhiteSpace(searchText))
             {
                 dataGrid.ItemsSource = view;
+                dataGrid.Tag = view;
                 return;
             }
 
@@ -109,7 +74,14 @@ namespace ResourceManager.Helpers
                 resultTable.ImportRow(row);
             }
 
-            dataGrid.ItemsSource = resultTable.DefaultView;
+            if (resultTable.Rows.Count == 0)
+            {
+                dataGrid.ItemsSource = CreateNotFoundRow(table).DefaultView;
+            }
+            else
+            {
+                dataGrid.ItemsSource = resultTable.DefaultView;
+            }
 
             dataGrid.Tag = view;
         }
@@ -119,14 +91,10 @@ namespace ResourceManager.Helpers
             var view = (DataView)dataGrid.Tag ?? (DataView)dataGrid.ItemsSource;
             var table = view.ToTable();
 
-            if (table.Columns.Count < 1)
-            {
-                throw new ArgumentException("DataGrid must have at least one column.");
-            }
-
             if (string.IsNullOrWhiteSpace(searchText))
             {
                 dataGrid.ItemsSource = view;
+                dataGrid.Tag = view;
                 return;
             }
 
@@ -148,7 +116,14 @@ namespace ResourceManager.Helpers
                 resultTable.ImportRow(row);
             }
 
-            dataGrid.ItemsSource = resultTable.DefaultView;
+            if (resultTable.Rows.Count == 0)
+            {
+                dataGrid.ItemsSource = CreateNotFoundRow(table).DefaultView;
+            }
+            else
+            {
+                dataGrid.ItemsSource = resultTable.DefaultView;
+            }
 
             dataGrid.Tag = view;
         }
@@ -169,5 +144,78 @@ namespace ResourceManager.Helpers
             }
             return value;
         }
+
+        public static string GetNonAlphanumericChars(string input)
+        {
+            HashSet<char> nonAlphanumericChars = new HashSet<char>();
+
+            foreach (char c in input)
+            {
+                if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9'))
+                {
+                    nonAlphanumericChars.Add(c);
+                }
+            }
+
+            StringBuilder sb = new StringBuilder();
+            foreach (char c in nonAlphanumericChars)
+            {
+                sb.Append(string.Format("'{0}',", c));
+            }
+
+            if (sb.Length > 0)
+            {
+                sb.Length--;
+            }
+
+            return sb.ToString();
+        }
+
+        private static DataTable CreateNotFoundRow(DataTable table)
+        {
+            var notFoundTable = table.Clone();
+            var notFoundRow = notFoundTable.NewRow();
+
+            for (int i = 0; i < notFoundTable.Columns.Count; i++)
+            {
+                notFoundRow[i] = string.Empty;
+            }
+
+            notFoundTable.Rows.Add(notFoundRow);
+            return notFoundTable;
+        }
+
+        public static void UpdateDataGridCell(DataGrid dataGrid, string columnName, string key, string wording)
+        {
+            int keyColumnIndex = -1;
+            for (int i = 0; i < dataGrid.Columns.Count; i++)
+            {
+                if (dataGrid.Columns[i].Header.ToString() == "Key")
+                {
+                    keyColumnIndex = i;
+                    break;
+                }
+            }
+
+            DataTable dataTable = ((DataView)dataGrid.ItemsSource).ToTable();
+
+            for (int i = 0; i < dataTable.Rows.Count; i++)
+            {
+                DataRow row = dataTable.Rows[i];
+                if (row[keyColumnIndex].ToString() == key)
+                {
+                    row[columnName] = wording;
+                    dataGrid.ItemsSource = dataTable.DefaultView;
+                    return;
+                }
+            }
+
+            DataRow newRow = dataTable.NewRow();
+            newRow[keyColumnIndex] = key;
+            newRow[columnName] = wording;
+            dataTable.Rows.Add(newRow);
+            dataGrid.ItemsSource = dataTable.DefaultView;
+        }
+
     }
 }

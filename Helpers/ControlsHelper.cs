@@ -58,7 +58,31 @@ namespace ResourceManager.Helpers
                 button.Background = Brushes.LightGray;
                 button.Content = oldContent;
 
+                button.MouseEnter += (s, e) =>
+                {
+                    button.Background = Brushes.Gray;
+                    button.Content = oldContent;
+                };
+                button.MouseLeave += (s, e) =>
+                {
+                    button.Background = Brushes.LightGray;
+                    button.Content = oldContent;
+                };
+
                 button.Tag = null;
+            }
+        }
+
+        public static void SetEqualColumnWidths(DataGrid dataGrid)
+        {
+            if (dataGrid != null)
+            {
+                double columnWidth = dataGrid.ActualWidth / dataGrid.Columns.Count;
+
+                foreach (var column in dataGrid.Columns)
+                {
+                    column.Width = new DataGridLength(columnWidth, DataGridLengthUnitType.Pixel);
+                }
             }
         }
     }

@@ -1,8 +1,11 @@
-﻿using System.Collections;
+﻿using ResourceManager.Entities;
+using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Windows.Controls;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -10,6 +13,36 @@ namespace ResourceManager.Helpers
 {
     public static class ResxHelper
     {
+        public static void LoadResxFilesToDataGrid(DataGrid dataGrid, List<ResxFile> files)
+        {
+            var keys = files.SelectMany(x => x.KeysAndWordings.Keys).ToHashSet();
+            var table = new DataTable();
+
+            table.Columns.Add("Key", typeof(string));
+
+            foreach (var file in files)
+            {
+                table.Columns.Add(file.FileName, typeof(string));
+            }
+
+            foreach (var key in keys)
+            {
+                var row = table.NewRow();
+                row["Key"] = key;
+
+                foreach (var file in files)
+                {
+                    if (file.KeysAndWordings.TryGetValue(key, out var value))
+                    {
+                        row[file.FileName] = value;
+                    }
+                }
+                table.Rows.Add(row);
+            }
+
+            dataGrid.ItemsSource = table.DefaultView;
+        }
+
         public static Encoding GetEncoding(string filePath)
         {
             using (var reader = new StreamReader(filePath, Encoding.Default, true))
@@ -66,12 +99,13 @@ namespace ResourceManager.Helpers
             }
         }
 
-        public static bool HasDuplicateKeys(string filePath)
+        public static List<string> GetDuplicateKeys(string filePath)
         {
             XmlDocument resxDoc = new XmlDocument();
             resxDoc.Load(filePath);
 
             var allKeys = new HashSet<string>();
+            var duplicateKeys = new HashSet<string>();
 
             foreach (XmlNode node in resxDoc.SelectNodes("root/data"))
             {
@@ -79,11 +113,11 @@ namespace ResourceManager.Helpers
 
                 if (!allKeys.Add(key))
                 {
-                    return true;
+                    duplicateKeys.Add(key);
                 }
             }
 
-            return false;
+            return new List<string>(duplicateKeys);
         }
 
         public static Dictionary<string, List<string>> FindDistinctDifferentNameDuplicateKeys(string filePath)
