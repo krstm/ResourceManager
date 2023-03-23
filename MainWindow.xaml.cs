@@ -128,9 +128,9 @@ namespace ResourceManager
                 var duplicateKeys = ResxHelper.GetDuplicateKeys(filePath);
                 if (duplicateKeys.Count > 0)
                 {
-                    MessageHelper.ShowInformationMessage("Dosyada çoklanmış veriler bulundu. Bu veriler temizlenecek." + 
-                        Environment.NewLine + 
-                        Environment.NewLine + 
+                    MessageHelper.ShowInformationMessage("Dosyada çoklanmış veriler bulundu. Bu veriler temizlenecek." +
+                        Environment.NewLine +
+                        Environment.NewLine +
                         "Çoklanmış Keyler:" +
                         Environment.NewLine +
                         string.Join(", ", duplicateKeys));
@@ -261,12 +261,25 @@ namespace ResourceManager
                     "Uygun olmayan karakterler: " +
                     Environment.NewLine + nonAlphabeticChars);
             }
-            if (keyNameIsOkey)
+            try
             {
-                var isUpdate = AddAndSearchHelper.AddResource(filePath, tbxAddKey.Text, tbxAddWording.Text);
-                AddAndSearchHelper.UpdateDataGridCell(dtgResxDatas, selectedFile, tbxAddKey.Text, tbxAddWording.Text);
-                ControlsHelper.SetEqualColumnWidths(dtgResxDatas);
-                ControlsHelper.UpdateButton(btnKeyWordingAddOrUpdate, isUpdate);
+                if (keyNameIsOkey)
+                {
+                    var isUpdate = AddAndSearchHelper.AddResource(filePath, tbxAddKey.Text, tbxAddWording.Text);
+
+                    var resxFileDic = resxFiles.Where(x => x.FileName == selectedFile).Select(x => x.KeysAndWordings).FirstOrDefault();
+                    if(resxFileDic != null)
+                    {
+                        AddAndSearchHelper.AddOrUpdateDictionaryEntry(resxFileDic, tbxAddKey.Text, tbxAddWording.Text);
+                    }
+                    ResxHelper.LoadResxFilesToDataGrid(dtgResxDatas, resxFiles);
+                    ControlsHelper.SetEqualColumnWidths(dtgResxDatas);
+                    ControlsHelper.UpdateButton(btnKeyWordingAddOrUpdate, isUpdate);
+                }
+            }
+            catch (Exception exception)
+            {
+                MessageHelper.ShowErrorMessage(exception.Message);
             }
             ControlsHelper.DisableControls(this, true);
         }

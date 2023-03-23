@@ -185,37 +185,16 @@ namespace ResourceManager.Helpers
             return notFoundTable;
         }
 
-        public static void UpdateDataGridCell(DataGrid dataGrid, string columnName, string key, string wording)
+        public static void AddOrUpdateDictionaryEntry(Dictionary<string, string> dictionary, string key, string wording)
         {
-            int keyColumnIndex = -1;
-            for (int i = 0; i < dataGrid.Columns.Count; i++)
+            if (dictionary.ContainsKey(key))
             {
-                if (dataGrid.Columns[i].Header.ToString() == "Key")
-                {
-                    keyColumnIndex = i;
-                    break;
-                }
+                dictionary[key] = wording;
             }
-
-            DataTable dataTable = ((DataView)dataGrid.ItemsSource).ToTable();
-
-            for (int i = 0; i < dataTable.Rows.Count; i++)
+            else
             {
-                DataRow row = dataTable.Rows[i];
-                if (row[keyColumnIndex].ToString() == key)
-                {
-                    row[columnName] = wording;
-                    dataGrid.ItemsSource = dataTable.DefaultView;
-                    return;
-                }
+                dictionary.Add(key, wording);
             }
-
-            DataRow newRow = dataTable.NewRow();
-            newRow[keyColumnIndex] = key;
-            newRow[columnName] = wording;
-            dataTable.Rows.Add(newRow);
-            dataGrid.ItemsSource = dataTable.DefaultView;
         }
-
     }
 }
